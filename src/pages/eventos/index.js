@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Carousel, Container, Row, Col, Card, Table, Button, Form } from 'react-bootstrap';
-import { db } from "../../utils/firebaseConfig"
+import { db, storage } from "../../utils/firebaseConfig";
+import FileUploader from "react-firebase-file-uploader";
 
 const EventosPage = () => {
 
@@ -8,6 +9,7 @@ const EventosPage = () => {
     const [nome, setNome] = useState('');
     const [ id, setId] = useState('');
     const [descricao, setDescricao] = useState('');
+    const [urlImagem, setUrlImagem] = useState('');
 
     const dbCollection = db.collection('eventos')
 
@@ -23,7 +25,8 @@ const EventosPage = () => {
                     return{
                         id : doc.id,
                         nome : doc.data().nome,
-                        descricao : doc.data().descricao
+                        descricao : doc.data().descricao,
+                        urlImagem : doc.data().urlImagem
                     }
                 });
                 setEventos(data)
@@ -44,6 +47,7 @@ const EventosPage = () => {
                 setId(result.id);
                 setNome(result.data().nome);
                 setDescricao(result.data().descricao)
+                setUrlImagem(result.data().urlImagem)
             })
         } catch (error) {
             console.error(error)
@@ -70,7 +74,8 @@ const EventosPage = () => {
         try {
             const evento = {
                 nome : nome,
-                descricao : descricao
+                descricao : descricao,
+                urlImagem : urlImagem
             };
     
             if(id === 0)
@@ -101,6 +106,21 @@ const EventosPage = () => {
         setDescricao('');
     }
 
+    const handleUploadError = error => {
+        console.error(error)
+    }
+    const handleUploadSuccess = filename => {
+        console.log('success '+ filename)
+        
+        storage
+            .ref('imagens')
+            .child(filename)
+            .getDownloadURL()
+            .then(url => {setUrlImagem(url)})
+            .catch(err => console.error(err))
+    } 
+
+
     return(
         <div>
             <Container>
@@ -109,6 +129,22 @@ const EventosPage = () => {
                 <Card>
                         <Card.Body>
                         <Form onSubmit={event => salvar(event)}>
+                            <label style={{backgroundColor: 'steelblue', color: 'white', padding: 10, borderRadius: 4, cursor: 'pointer'}}>
+                                Selecione uma imagem
+                                <Form.Group>
+                                    {urlImagem && <img src={urlImagem} style={{width : '200px'}} />}
+                                    <FileUploader
+                                        hidden
+                                        accept='image/*'
+                                        name='urlImagem'
+                                        randomizeFilename
+                                        storageRef={storage.ref('imagens')}
+                                        onUploadError={handleUploadError}
+                                        onUploadSuccess={handleUploadSuccess}                                        
+                                    />
+                                </Form.Group>
+                            </label>
+
                             <Form.Group controlId="formNome">
                                 <Form.Label>Nome</Form.Label>
                                 <Form.Control type="text" value={nome} onChange={event => setNome(event.target.value)} />
@@ -129,7 +165,8 @@ const EventosPage = () => {
                             <thead>
                                 <tr>
                                     <th>Nome</th>
-                                    <th>Categoria</th>
+                                    <th>Descrição</th>
+                                    <th>imagem</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -139,6 +176,7 @@ const EventosPage = () => {
                                         <tr key={index}>
                                             <td>{item.nome}</td>
                                             <td>{item.descricao}</td>
+                                            <td><img src={item.urlImagem} style={{width : "150px"}} /></td>
                                             <td>
                                                 <Button type="button" variant="warning" value={item.id} onClick={ event => editar(event)}>Editar</Button>
                                                 <Button type="button" variant="danger" value={item.id} style={{ marginLeft : '30px'}} onClick={ event => remover(event)}>Remover</Button>
